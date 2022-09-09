@@ -20,7 +20,6 @@ abstract class PlaylistRoomHelper: RoomDatabase() {
             if (helper == null) {
                 synchronized(PlaylistRoomHelper::class.java) {
                     helper = Room.databaseBuilder(context, PlaylistRoomHelper::class.java, "playlist")
-                        .allowMainThreadQueries()
                         .addMigrations(PLAYLIST_MIGRATION_1_2, PLAYLIST_MIGRATION_2_3) //DB 버전이 오를 경우 변경 사항을 반영하는 Migration을 추가
                         .build()
                 }

@@ -17,7 +17,6 @@ abstract class PlayCountRoomHelper: RoomDatabase() {
         fun getHelper(context: Context): PlayCountRoomHelper {
             if(helper == null) {
                 helper = Room.databaseBuilder(context, PlayCountRoomHelper::class.java, "ranking")
-                    .allowMainThreadQueries()
                     .addMigrations(PLAYCOUNT_MIGRATION_1_2)
                     .build()
             }

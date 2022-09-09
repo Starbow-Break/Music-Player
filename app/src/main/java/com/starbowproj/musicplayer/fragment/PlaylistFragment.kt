@@ -23,6 +23,10 @@ import com.starbowproj.musicplayer.event.Event
 import com.starbowproj.musicplayer.event.EventBus
 import com.starbowproj.musicplayer.room.Playlist
 import com.starbowproj.musicplayer.room.PlaylistRoomHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PlaylistFragment : Fragment() {
     val musicPlayer by lazy { MusicPlayer.getInstance() }
@@ -103,7 +107,9 @@ class PlaylistFragment : Fragment() {
     //즉, 프래그먼트가 화면에 다시 보여지면 onStart()부터 호출되므로 onStart()에서 showPlaylist()를 호출해 플레이리스트 목록을 띄운다!
     override fun onStart() {
         super.onStart()
-        showPlaylist() //플레이리스트 목록을 프래그먼트에 출력
+        CoroutineScope(Dispatchers.Main).launch {
+            showPlaylist() //플레이리스트 목록을 프래그먼트에 출력
+        }
     }
 
     override fun onDestroy() {
@@ -132,8 +138,10 @@ class PlaylistFragment : Fragment() {
         return playlistList.last().no + 1
     }
 
-    private fun showPlaylist() {
-        playlistList = helper.playlistDao().getAllPlaylist()
+    suspend private fun showPlaylist() {
+        withContext(Dispatchers.IO) {
+            playlistList = helper.playlistDao().getAllPlaylist()
+        }
 
         //어댑터 생성 및 리사이클러뷰 설정
         if(adapter == null) {

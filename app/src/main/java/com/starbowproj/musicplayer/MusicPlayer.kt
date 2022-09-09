@@ -96,7 +96,7 @@ class MusicPlayer private constructor() {
         Log.d("현재 재생 곡 위치", "curOrder = ${curOrder}, getCurrentOrder() = ${getCurrentOrder()}")
         curOrder = getCurrentOrder() ?: -1 //중간에 리스트가 변했을수도 있으므로 order를 다시 받음
         //반복 재생이 꺼져있고 재생 완료한 음원이 마지막 음원일 때
-        if (repeatMode == Repeat.REPEAT_OFF && curOrder >= musicList.size - 1) {
+        if (!isShuffle && repeatMode == Repeat.REPEAT_OFF && curOrder >= musicList.size - 1) {
             //리스트 맨 앞으로 이동한 후 일시정지 상태로 설정한다.
             //마지막 음원에서 그대로 멈추는 것보다 첫번째 음원으로 전환후 멈추는것이 사용자 입장에서는 편하게 첫 음원부터 재생할 수 있어 더 좋을것이라고 판단
             playMusic(0)

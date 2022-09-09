@@ -14,7 +14,12 @@ import com.starbowproj.musicplayer.activity.MainActivity
 import com.starbowproj.musicplayer.databinding.PlaylistItemRecyclerBinding
 import com.starbowproj.musicplayer.fragment.DetailedPlaylistFragment
 import com.starbowproj.musicplayer.room.Playlist
+import com.starbowproj.musicplayer.room.PlaylistMusic
 import com.starbowproj.musicplayer.room.PlaylistRoomHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PlaylistAdapter(var mContext: Context) : RecyclerView.Adapter<PlaylistAdapter.Holder>() {
     val musicPlayer by lazy { MusicPlayer.getInstance() }
@@ -65,7 +70,9 @@ class PlaylistAdapter(var mContext: Context) : RecyclerView.Adapter<PlaylistAdap
                         .setTitle("플레이리스트 삭제")
                         .setMessage("정말로 ${mPlaylist?.name} 플레이리스트를 삭제하시겠습니까?")
                         .setPositiveButton("확인") { dlg, id ->
-                            deletePlaylist() //확인 버튼을 누르면 삭제 작업 진행
+                            CoroutineScope(Dispatchers.IO).launch {
+                                deletePlaylist() //확인 버튼을 누르면 삭제 작업 진행
+                            }
                         }.setNegativeButton("취소") { dlg, id -> }
 
                     dialog.show()
@@ -82,26 +89,31 @@ class PlaylistAdapter(var mContext: Context) : RecyclerView.Adapter<PlaylistAdap
         }
 
         //해당 뷰홀더에 지정된 플레이리스트를 삭제하는 메서드
-        private fun deletePlaylist() {
+         suspend private fun deletePlaylist() {
             try {
                 if(musicPlayer.getPlaylistId() == mPlaylist?.no) {
                     musicPlayer.stop()
                 }
 
                 playlistList.removeAt(this.adapterPosition)
-                notifyItemRangeRemoved(this.adapterPosition, 1)
-
-                //삭제할 플레이 리스트의 곡 목록 얻기
-                val deleteMusicList = helper?.playlistMusicDao()?.getAllMusic(mPlaylist?.no!!) ?: listOf()
-                for (playlistMusic in deleteMusicList) {
-                    helper?.playlistMusicDao()?.deleteMusic(playlistMusic) //곡 전부 DB에서 삭제
+                withContext(Dispatchers.Main) {
+                    notifyItemRangeRemoved(this@Holder.adapterPosition, 1)
                 }
+
+                val deleteMusicList = helper?.playlistMusicDao()?.getAllMusic(mPlaylist?.no!!) ?: listOf() //삭제할 플레이 리스트의 곡 목록 얻기
+
+                for (playlistMusic in deleteMusicList) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        helper?.playlistMusicDao()?.deleteMusic(playlistMusic) //곡 전부 DB에서 삭제
+                    }.join()
+                }
+
                 helper?.playlistDao()?.delete(mPlaylist!!) //플레이 리스트를 DB에서 제거
-
-
             } catch (e: Exception) {
                 e.printStackTrace()
-                Toast.makeText(binding.root.context, "이미 삭제됐거나 삭제할 수 없는 플레이리스트입니다.", Toast.LENGTH_LONG).show()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(binding.root.context, "이미 삭제됐거나 삭제할 수 없는 플레이리스트입니다.", Toast.LENGTH_LONG).show()
+                }
             }
         }
 

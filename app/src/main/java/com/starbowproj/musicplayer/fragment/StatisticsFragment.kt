@@ -14,7 +14,12 @@ import com.starbowproj.musicplayer.MusicPlayer
 import com.starbowproj.musicplayer.R
 import com.starbowproj.musicplayer.adapter.PlayCountAdapter
 import com.starbowproj.musicplayer.databinding.FragmentStatisticsBinding
+import com.starbowproj.musicplayer.room.PlayCount
 import com.starbowproj.musicplayer.room.PlayCountRoomHelper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class StatisticsFragment : Fragment() {
     val musicPlayer by lazy { MusicPlayer.getInstance() }
@@ -36,7 +41,9 @@ class StatisticsFragment : Fragment() {
         binding = FragmentStatisticsBinding.inflate(inflater, container, false)
         binding.recyclerView.setEmptyView(binding.textEmptyRanking)
         setTimer(musicPlayer.getTotalPlayTime(), musicPlayer.getStar())
-        setPlayCountRanking()
+        CoroutineScope(Dispatchers.Main).launch {
+            setPlayCountRanking()
+        }
         return binding.root
     }
 
@@ -54,7 +61,9 @@ class StatisticsFragment : Fragment() {
                 }
             }
             "CHANGE_PLAYCOUNT", "STOP" -> { //플레이카운트 정보가 변경 됨
-                setPlayCountRanking()
+                CoroutineScope(Dispatchers.Main).launch {
+                    setPlayCountRanking()
+                }
             }
         }
     }
@@ -76,8 +85,12 @@ class StatisticsFragment : Fragment() {
     }
 
     //재생 횟수 순위를 리사이클러뷰를 통해 보여주는 메서드
-    private fun setPlayCountRanking() {
-        var playCountList = PlayCountRoomHelper.getHelper(mContext).playCountDao().getAllPlayCount()
+    suspend private fun setPlayCountRanking() {
+        var playCountList: MutableList<PlayCount>
+        withContext(Dispatchers.IO) {
+            playCountList = PlayCountRoomHelper.getHelper(mContext).playCountDao().getAllPlayCount()
+        }
+
         playCountList = if(playCountList.size > 100) {
             val playCountSubList = playCountList.subList(0, 100)
             playCountSubList
@@ -85,14 +98,17 @@ class StatisticsFragment : Fragment() {
 
         if (adapter != null) {
             adapter!!.playCountList = playCountList
-            adapter!!.notifyItemRangeChanged(0, playCountList.size)
+            withContext(Dispatchers.Main) {
+                adapter!!.notifyItemRangeChanged(0, playCountList.size)
+            }
         } else {
             adapter = PlayCountAdapter(mContext)
             //순위 목록은 상위 100개만 띄운다
             adapter!!.playCountList = playCountList
-            binding.recyclerView.adapter = adapter
-            binding.recyclerView.layoutManager = LinearLayoutManager(mContext)
-
+            withContext(Dispatchers.Main) {
+                binding.recyclerView.adapter = adapter
+                binding.recyclerView.layoutManager = LinearLayoutManager(mContext)
+            }
         }
     }
 }

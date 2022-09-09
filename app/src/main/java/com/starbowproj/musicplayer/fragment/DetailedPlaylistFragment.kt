@@ -23,6 +23,7 @@ import com.starbowproj.musicplayer.databinding.FragmentDetailedPlaylistBinding
 import com.starbowproj.musicplayer.event.Event
 import com.starbowproj.musicplayer.event.EventBus
 import com.starbowproj.musicplayer.room.Playlist
+import com.starbowproj.musicplayer.room.PlaylistMusic
 import com.starbowproj.musicplayer.room.PlaylistRoomHelper
 import kotlinx.coroutines.*
 
@@ -128,10 +129,14 @@ class DetailedPlaylistFragment : Fragment(), MusicAdapter.OnStartDragHolder {
         currentPlaylist = arguments?.getSerializable("currentPlaylist") as Playlist
         EventBus.getInstance().post(Event("OPEN_PLAYLIST_DETAILED", currentPlaylist.name))
         Log.d("플레이리스트", "playlist = ${currentPlaylist.name}")
-        showPlaylist(currentPlaylist)
         if(musicPlayer.getPlaylistId() == currentPlaylist.no) { //플레이어에서 재생 중인 플레이리스트와 음원이 추가된 플레이리스트가 일치하면
             musicPlayer.setMusicList(musicList) //플레이어에 재생할 음원을 다시 세팅해준다
         }
+
+        CoroutineScope(Dispatchers.Main).launch {
+            showPlaylist(currentPlaylist)
+        }
+
         super.onStart()
     }
 
@@ -159,7 +164,7 @@ class DetailedPlaylistFragment : Fragment(), MusicAdapter.OnStartDragHolder {
     }
 
     //선택한 플레이리스트 및 해당 정보를 보여줌 (플레이리스트 이름, 들어있는 곡의 수, 곡 목록)
-    private fun showPlaylist(playlist: Playlist) {
+    suspend private fun showPlaylist(playlist: Playlist) {
         musicList = getMusicList(playlist)
 
         EventBus.getInstance().post(Event("CHANGE_PLAYLIST_NUM_MUSIC", musicList.size))
@@ -189,8 +194,12 @@ class DetailedPlaylistFragment : Fragment(), MusicAdapter.OnStartDragHolder {
     }
 
     //선택한 플레이리스트에 들어있는 음원 목록을 반환 (MutableList<Music>으로 반환)
-    private fun getMusicList(playlist: Playlist): MutableList<Music> {
-        val playlistMusicList = helper.playlistMusicDao().getAllMusic(playlist.no)
+    suspend private fun getMusicList(playlist: Playlist): MutableList<Music> {
+        var playlistMusicList: List<PlaylistMusic>
+        withContext(Dispatchers.IO) {
+            playlistMusicList = helper.playlistMusicDao().getAllMusic(playlist.no)
+        }
+
         val musicList = mutableListOf<Music>()
         for (playlistMusic in playlistMusicList) {
             val music = Music(
